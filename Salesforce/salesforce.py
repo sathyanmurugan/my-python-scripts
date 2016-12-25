@@ -4,7 +4,9 @@
 
 """
 This file contains methods to connect to the Salesforce API and 
-is based on the Salesforce-Python wrapper "beatbox" by Superfell.
+is based on the Salesforce-Python wrapper "beatbox"
+
+Credit to Superfell and hynekcer.
 
 Github link for Beatbox: https://github.com/superfell/Beatbox
 
