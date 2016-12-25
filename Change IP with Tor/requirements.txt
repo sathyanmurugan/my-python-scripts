@@ -1,0 +1,5 @@
+The following packages are required:
+win_inet_pton
+requests
+socks
+socket
