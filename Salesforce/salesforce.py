@@ -8,8 +8,6 @@ is based on the Salesforce-Python wrapper "beatbox"
 
 Credit to Superfell and hynekcer.
 
-Github link for Beatbox: https://github.com/superfell/Beatbox
-
 """
 
 
