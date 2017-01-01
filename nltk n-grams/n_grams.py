@@ -5,8 +5,7 @@
 """
 This file contains methods to n-gramize strings that may also have numerical data attributions
 As an example, this script can be used to n-gramize search terms (on google for instance)
-and grouping each distinct n-gram by attributes such as visits, clicks, conversions etc
-
+and group each distinct n-gram by attributes such as visits, clicks, conversions etc
 
 """
 
@@ -28,8 +27,7 @@ statements = ['cats are awesome', 'dogs are 20 times more awesome','both cats an
 votes = [5,3,2]
 df = pd.DataFrame({
 	'statements':statements,
-	'votes':votes
- })
+	'votes':votes})
 
 # Convert statements into word tokens
 df['statements'] = df['statements'].apply(lambda row: word_tokenize(row))

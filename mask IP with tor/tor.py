@@ -29,19 +29,23 @@ def refresh_ip():
 
 	socks.setdefaultproxy()
 	s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	#Connect through controlport 9051 to send commands
 	s.connect(("127.0.0.1", 9051))
 	s.send("AUTHENTICATE\r\n")
 	s.send("SIGNAL NEWNYM\r\n")
 	s.close()
 	connect_to_tor()
 
-#Connect to tor
-connect_to_tor()
-print ("Connected to Tor with IP - " + requests.get("http://icanhazip.com").text)
 
-#Wait a bit before refreshing the IP
-time.sleep(5)
+if __name__ == '__main__':
 
-#Refresh IP (beware of rate limiting by tor if this is done too frequently)
-refresh_ip()
-print ("Refreshed IP. New IP is - " + requests.get("http://icanhazip.com").text)
+	#Connect to tor
+	connect_to_tor()
+	print ("Connected to Tor with IP - " + requests.get("http://icanhazip.com").text)
+
+	#Wait a bit before refreshing the IP
+	time.sleep(5)
+
+	#Refresh IP (beware of rate limiting by tor if this is done too frequently)
+	refresh_ip()
+	print ("Refreshed IP. New IP is - " + requests.get("http://icanhazip.com").text)
