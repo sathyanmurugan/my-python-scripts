@@ -1,3 +1,6 @@
+from nltk import wordpunct_tokenize
+from nltk.corpus import stopwords
+
 def detect_langs(text):
 	"""
 	Uses the stopwords corpus in nltk to count the occurences of stopwords 
