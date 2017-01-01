@@ -4,9 +4,13 @@
 
 """
 This file contains methods to connect to the Salesforce API and 
+<<<<<<< HEAD:Salesforce updater/salesforce.py
 is based on the Salesforce-Python library "beatbox" by Superfell.
+=======
+is based on the Salesforce-Python wrapper "beatbox"
+>>>>>>> origin/master:Salesforce/salesforce.py
 
-Github link for Beatbox: https://github.com/superfell/Beatbox
+Credit to Superfell and hynekcer.
 
 """
 
