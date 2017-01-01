@@ -3,12 +3,8 @@
 # Author: Sathyan Murugan
 
 """
-This file contains methods to connect to the Salesforce API and 
-<<<<<<< HEAD:Salesforce updater/salesforce.py
+This file contains methods to connect to the Salesforce API and
 is based on the Salesforce-Python library "beatbox" by Superfell.
-=======
-is based on the Salesforce-Python wrapper "beatbox"
->>>>>>> origin/master:Salesforce/salesforce.py
 
 Credit to Superfell and hynekcer.
 
