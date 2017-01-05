@@ -4,8 +4,8 @@ from sshtunnel import SSHTunnelForwarder
 
 class MySQL:
 
-	def __init__(self,host,ssh_port=22,ssh_username,ssh_private_key,
-		remote_bind_ip,remote_bind_port=3306,db_username,db_password):
+	def __init__(self,host,ssh_port,ssh_username,ssh_private_key,
+		remote_bind_ip,remote_bind_port,db_username,db_password):
 		'''
 		1. SSH Tunnel into a specified host and port forward 
 		2. Connect to the MySQL Database
