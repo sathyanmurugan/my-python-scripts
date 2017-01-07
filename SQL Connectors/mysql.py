@@ -1,5 +1,4 @@
 import pymysql.cursors
-from sshtunnel import SSHTunnelForwarder
 
 class MySQL:
 
