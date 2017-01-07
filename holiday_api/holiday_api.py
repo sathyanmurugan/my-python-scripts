@@ -1,3 +1,17 @@
+#!/usr/bin/env python3
+#
+# Author: Sathyan Murugan (sathyan.murugan@blacklane.com)
+# Year:   2017
+
+"""
+This file contains methods to connect to Holiday API (a RESTful service for obtaining holiday data)
+and return holidays for a given country, month and year.
+
+API key is required
+
+Documentation: https://holidayapi.com
+"""
+
 import requests
 import json
 import urllib.parse
