@@ -1,7 +1,6 @@
 import pymysql.cursors
 
 class MySQL:
-
 	def __init__(self,username,password,host,port):
 		'''
 		Connect to MySQL Database
