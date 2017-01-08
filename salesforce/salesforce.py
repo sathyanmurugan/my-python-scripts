@@ -7,7 +7,6 @@ This file contains methods to connect to the Salesforce API and
 is based on the Salesforce-Python library "beatbox" by Superfell.
 
 Credit to Superfell and hynekcer.
-
 """
 
 
