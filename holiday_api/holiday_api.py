@@ -37,6 +37,6 @@ class HolidayAPI():
 		}
 
 		r = requests.get(self.api_endpoint,params=urllib.parse.urlencode(payload))
-
 		response = r.json()
+		
 		return response
