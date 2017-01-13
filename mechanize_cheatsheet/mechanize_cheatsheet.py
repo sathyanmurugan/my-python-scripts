@@ -2,6 +2,9 @@ import mechanize
 from StringIO import StringIO
 import pandas as pd
 
+
+#http://www.pythonforbeginners.com/cheatsheet/python-mechanize-cheat-sheet
+
 #Login to Website
 br = mechanize.Browser()
 br.set_handle_robots(False)

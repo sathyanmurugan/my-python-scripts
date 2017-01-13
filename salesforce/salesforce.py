@@ -95,7 +95,7 @@ class Salesforce:
 
 	def query(self,sf_query):
 
-		query_result = sf.query(sf_query)
+		query_result = self.sf.query(sf_query)
 		records = query_result["records"]
 		total_records = query_result['size']
 		query_locator = query_result['queryLocator']
@@ -106,7 +106,7 @@ class Salesforce:
 
 			query_counter = query_counter + 1
 			print ("extracting batch %d of %d" % (query_counter,query_batches))
-			query_result = sf.queryMore(query_locator)
+			query_result = self.sf.queryMore(query_locator)
 			query_locator = query_result['queryLocator']
 			records = records + query_result['records']
 
