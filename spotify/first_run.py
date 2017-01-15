@@ -11,6 +11,11 @@ auth = oauth2.SpotifyOAuth(
 
 auth.get_authorize_url()
 #Copy output from above and get the url it redirects to
+url ="""
+
+"""
+
 code = oa.parse_response_code(url)
 token_info = oa.get_access_token(code)
+
 #Store token info somewhere

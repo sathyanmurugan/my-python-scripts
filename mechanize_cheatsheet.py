@@ -1,3 +1,6 @@
+
+# PYTHON 2.7
+
 import mechanize
 from StringIO import StringIO
 import pandas as pd

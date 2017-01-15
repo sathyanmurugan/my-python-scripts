@@ -43,6 +43,13 @@ class MySpotify:
 		return new_playlist['id']
 
 
+	def get_user_playlists(self):
+
+
+		return self.sp.current_user_playlists()
+
+
+
 	def get_top_tracks(token,limit=20,time_range='medium_term'):
 		'''
 		Returns a list of tracks Ids
