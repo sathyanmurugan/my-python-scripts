@@ -13,7 +13,7 @@ class MySpotify:
 		user_locale = self.sp.current_user()['country']
 		user_name = self.sp.current_user()['display_name']
 		user_email = self.sp.current_user()['email']
-		user_spotify_id = self.sp.current_user()['id']
+		user_id = self.sp.current_user()['id']
 		user_product = self.sp.current_user()['product']
 		user_followers = self.sp.current_user()['followers']['total']
 		user_spotify_link = self.sp.current_user()['external_urls']['spotify']
@@ -22,7 +22,7 @@ class MySpotify:
 		'user_locale':user_locale,
 		'user_name':user_name,
 		'user_email':user_email,
-		'user_spotify_id':user_spotify_id,
+		'user_id':user_id,
 		'user_product':user_product,
 		'user_followers':user_followers,
 		'user_spotify_link':user_spotify_link
@@ -31,79 +31,32 @@ class MySpotify:
 		return user_details
 
 
-
-	def create_playlist(self,playlist_name,is_public=True):
+	def get_user_playlist_ids(self):
 		'''
-		Creates playlist
-		Returns Id of created playlist
+		Returns playlist Ids
 		'''
-		user_spotify_id = self.sp.current_user()['id']
-		new_playlist = self.sp.user_playlist_create(user_spotify_id,playlist_name,public=is_public)
+		playlists = self.sp.current_user_playlists()
+		playlist_ids = [pl['id'] for pl in playlists['items']]
 
-		return new_playlist['id']
+		return playlist_ids
 
-
-	def get_user_playlists(self):
-
-
-		return self.sp.current_user_playlists()
+	def get_track_ids_from_playlist(self,user_id,playlist_id):
 
 
+		tracks = self.sp.user_playlist_tracks(user_id,playlist_id)
+		track_ids = [track['track']['id'] for track in tracks['items']]
 
-	def get_top_tracks(token,limit=20,time_range='medium_term'):
-		'''
-		Returns a list of tracks Ids
-		time_range can be short_term, medium_term, long_term
-		'''
+		return track_ids
 
-		user_top_tracks = self.sp.current_user_top_tracks(limit=limit,time_range=time_range)
-		top_tracks = user_top_tracks['items']
-		top_track_ids = []
+	def get_recommendations(self,track_ids,country,limit=20):
 
-		for top_track in top_tracks:
-			top_track_ids.append(top_track['id'])
-
-		return top_track_ids
-
-
-	def add_tracks_to_playlist(token,playlist_id,track_ids):
-		'''
-		Adds tracks to a given playlist
-		track_ids is a list
-		'''
-		sp = spotipy.Spotify(auth=token)
-		user_spotify_id = sp.current_user()['id']
-		add_tracks = sp.user_playlist_add_tracks(user_spotify_id,playlist_id,track_ids)
-
-
-
-	def replace_tracks_in_playlist(token,playlist_id,track_ids):
-		'''
-		Replace tracks in a given playlist
-		track_ids is a list
-		'''
-
-		sp = spotipy.Spotify(auth=token)
-		user_spotify_id = sp.current_user()['id']
-		add_tracks = sp.user_playlist_replace_tracks(user_spotify_id,playlist_id,track_ids)
-
-
-	def get_recommended_tracks(token,seed_artists=[],seed_genres=[],seed_tracks=[],limit=20):
-		'''
-		Returns Track Ids
-		Seed_artists, seed_tracks are list of Ids
-		Seed_genres is name of genre
-		At least one of the above 3 is needed
-		limit default is 20
-		Country is set to current user's locale
-		'''
-
-		sp = spotipy.Spotify(auth=token)
-		country = sp.current_user()['country']
-		recommended_tracks = sp.recommendations(seed_artists,seed_genres,seed_tracks,limit,country)
-
-		recommended_track_ids = []
-		for track in recommended_tracks['tracks']:
-			recommended_track_ids.append(track['id'])
+		recommended_tracks = self.sp.recommendations(seed_tracks=track_ids, country=country, limit=limit)
+		recommended_track_ids = [track['id'] for track in recommended_tracks['tracks']]
 
 		return recommended_track_ids
+
+	def replace_tracks_in_playlist(self,user_id,playlist_id,track_ids):
+		
+		result = self.sp.user_playlist_replace_tracks(user_id,playlist_id,track_ids)
+
+		return result
