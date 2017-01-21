@@ -51,8 +51,11 @@ class Client:
 		self.timeout = 15
 
 	def __del__(self):
-		if self.__conn != None:
-			self.__conn.close()
+		if self.__conn is not None:
+			try:
+				self.__conn.close()
+			except Exception:
+				pass
 
 	# login, the serverUrl and sessionId are automatically handled, returns the loginResult structure
 	def login(self, username, password):
@@ -332,7 +335,7 @@ class XmlWriter:
 
 	def endDocument(self):
 		self.xg.endDocument()
-		if (self.__gzip != None):
+		if (self.__gzip is not None):
 			self.__gzip.close();
 		return self.__buf.getvalue()
 
@@ -422,7 +425,7 @@ class SoapEnvelope:
 			headers['content-encoding'] = 'gzip'
 		close = False
 		(scheme, host, path, params, query, frag) = urlparse(self.serverUrl)
-		if conn == None:
+		if conn is None:
 			conn = makeConnection(scheme, host)
 			close = True
 		rawRequest = self.makeEnvelope();

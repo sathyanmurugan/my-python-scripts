@@ -10,6 +10,8 @@ which is an older version and is only compatible with Python 2.7 and lower
 import salesforce.beatbox as beatbox
 from math import ceil
 from datetime import datetime,timedelta
+import logging
+
 
 __version__ = "0.2"
 __author__ = "Sathyan Murugan"
@@ -25,6 +27,7 @@ class Salesforce:
 		beatbox.gzipRequest = False
 		loginResult = self.svc.login(sf_user,sf_pw)
 		self.userId = str(loginResult[self.sf.userInfo][self.sf.userId])
+		self.logger = logging.getLogger(__name__ + '.Salesforce')
 
 
 	def _get_fields(self,query_string):
@@ -126,7 +129,7 @@ class Salesforce:
 		start_time = (datetime.utcnow() - timedelta(seconds=20)).strftime('%Y-%m-%dT%H:%M:%SZ')
 		for batch in batches:
 			counter+=1
-			print ('Inserting batch %d of %d' % (counter,len(batches)))
+			self.logger.info ('Inserting batch %d of %d' % (counter,len(batches)))
 			batch_result = self.svc.create(batch)
 
 		end_time = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
@@ -159,7 +162,7 @@ class Salesforce:
 		start_time = (datetime.utcnow() - timedelta(seconds=20)).strftime('%Y-%m-%dT%H:%M:%SZ')
 		for batch in batches:
 			counter+=1
-			print ('Updating batch %d of %d' % (counter,len(batches)))
+			self.logger.info ('Updating batch %d of %d' % (counter,len(batches)))
 			batch_result = self.svc.update(batch)
 
 		end_time = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
@@ -197,7 +200,7 @@ class Salesforce:
 		start_time = (datetime.utcnow() - timedelta(seconds=20)).strftime('%Y-%m-%dT%H:%M:%SZ')
 		for batch in batches:
 			counter+=1
-			print ('Upserting batch %d of %d' % (counter,len(batches)))
+			self.logger.info ('Upserting batch %d of %d' % (counter,len(batches)))
 			batch_result = self.svc.upsert(upsert_field,batch)
 
 		end_time = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
@@ -224,7 +227,7 @@ class Salesforce:
 
 		for record_id in list_ids:
 			counter+=1
-			print ('Deleting record %d of %d' % (counter,len(list_ids)))
+			self.logger.info ('Deleting record %d of %d' % (counter,len(list_ids)))
 			batch_result = self.svc.delete(record_id)
 			result.append(batch_result)
 
