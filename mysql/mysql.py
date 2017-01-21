@@ -1,6 +1,8 @@
 import pymysql.cursors
+from sshtunnel import SSHTunnelForwarder
 
-class MySQL:
+class MySQL(object):
+
 	def __init__(self,username,password,host,port):
 		'''
 		Connect to MySQL Database
@@ -15,6 +17,10 @@ class MySQL:
 			cursorclass=pymysql.cursors.DictCursor)
 
 		self.cursor = self.connection.cursor()
+	
+	def __enter__(self):
+		
+		return self
 
 
 	def get_schemas_tables(self):
@@ -40,16 +46,6 @@ class MySQL:
 		return schemas_tables
 
 
-	def build_query(self,schema,table):
-		'''
-		Generates a query string 
-		'''
-
-		query = "SELECT * FROM {0}.{1}".format(schema,table)
-
-		return query
-
-
 	def execute_query(self,query):
 		'''
 		Executes a query and returns a list of dicts
@@ -57,6 +53,7 @@ class MySQL:
 		
 		try:
 			self.cursor.execute(query)
+			self.connection.commit()
 		except Exception as e:
 			return e
 
@@ -71,36 +68,41 @@ class MySQL:
 		self.cursor.close()
 		self.connection.close()
 
+	def __exit__(self,*args):
+		self.close_connection()
 
-'''
-Example usage
-'''
 
-import os
-from imp import load_source
-import pandas as pd
 
-if __name__ == '__main__':
 
-	#Get credentials stored in home dir
-	creds = load_source(u'credentials',
-		os.path.normpath(os.path.expanduser(u'~/credentials.py')))
+
+class MySQLSSH(MySQL):
+
+	def __init__(self,host,ssh_port,ssh_username,ssh_private_key,
+		remote_bind_ip,remote_bind_port,db_username,db_password):
+		'''
+		1. SSH Tunnel into a specified host and port forward 
+		2. Connect to the MySQL Database
+		'''
+
+		self.server = SSHTunnelForwarder((host,ssh_port),
+			ssh_username=ssh_username,
+			ssh_private_key=ssh_private_key,
+			remote_bind_address=(remote_bind_ip, remote_bind_port))
+
+		self.server.start()
+
+		self.cnxn = pymysql.connect(
+			host='127.0.0.1',
+			port=self.server.local_bind_port,
+			user=db_username,
+			password=db_password,
+			charset='utf8mb4',
+			cursorclass=pymysql.cursors.DictCursor)
+
+		self.cursor = self.cnxn.cursor()
+
 	
-	#Connect to MySQL
-	mysql = MySQL(creds.username,creds.password,creds.host,creds.port)
-
-	#Get all schemas a tables
-	schemas_tables = mysql.get_schemas_tables()
-
-	#Loop through dict, and query each table
-	#Store result in Dataframe and output as  csv
-	for schema in schemas_tables:
-		for table in schemas_tables[schema]:
-			query = mysql.build_query(schema,table)
-			query_result = mysql.execute_query(query)
-			df = pd.DataFrame(query_result)
-			if len(df) > 0:
-				df.to_csv('{0}_{1}.csv'.format(schema,table),index=False)
-
-	
-	mysql.close_connection()
+	def close_connection(self):
+		self.cursor.close()
+		self.cnxn.close()
+		self.server.close()
