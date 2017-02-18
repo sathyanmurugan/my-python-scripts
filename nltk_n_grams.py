@@ -37,7 +37,7 @@ df['statements'] = df['statements'].apply(lambda row: [stemmer.stem(item) for it
 
 # Remove unnecessary words/numbers/symbols
 df['statements'] = df['statements'].apply(lambda row: [item for item in row 
-                                              		if item not in stop
+                                              		if item.lower() not in stop
                                               		and item not in item.strip(string.ascii_letters)])
 
 # Convert the tokens back to a string

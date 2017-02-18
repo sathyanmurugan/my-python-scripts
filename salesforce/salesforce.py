@@ -35,7 +35,7 @@ class Salesforce:
 		Extracts the fields from the query
 		'''
 		alpha = "SELECT"
-		bravo = "FROM"
+		bravo = "FROM "
 		startpos = query_string.upper().find(alpha) + len(alpha)
 		endpos = query_string.upper().find(bravo, startpos)
 		dirty_fields = query_string[startpos:endpos].replace(' ','').split(',')
@@ -48,6 +48,30 @@ class Salesforce:
 
 
 		qr = self.svc.query(query_string)
+		results = qr[self.sf.records:]
+		result_size = str(qr[self.sf.size])
+
+		while str(qr[self.sf.done]) == 'false':
+			qr = self.svc.queryMore(str(qr[self.sf.queryLocator]))
+			results.extend(qr[self.sf.records:])
+
+		#Extract fields from query string
+		fields = self._get_fields(query_string)
+
+		data_list = []
+		for result in results:
+			data_dict = {}
+			for val,field in zip(result[2:],fields):
+				data_dict[field] = str(val)
+			data_list.append(data_dict)
+
+		return data_list
+
+
+	def query_all(self,query_string):
+
+
+		qr = self.svc.queryAll(query_string)
 		results = qr[self.sf.records:]
 		result_size = str(qr[self.sf.size])
 
@@ -99,13 +123,11 @@ class Salesforce:
 				FROM {1} 
 				WHERE LastModifiedDate>={2}
 				AND LastModifiedDate<={3} 
-				AND LastModifiedById ='{4}'
 				""".format(
 					field,
 					sobject,
 					start_time,
-					end_time,
-					self.userId
+					end_time
 					))
 
 			Ids = [dic[field] for dic in query_result]
