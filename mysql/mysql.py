@@ -1,3 +1,4 @@
+import pymysql
 import pymysql.cursors
 from sshtunnel import SSHTunnelForwarder
 
@@ -7,7 +8,8 @@ class MySQL(object):
 		'''
 		Connect to MySQL Database
 		'''
-
+		# Set dictinary type for cursor to OrderedDict
+		pymysql.cursors.DictCursor.dict_type = OrderedDict
 		self.connection = pymysql.connect(
 			host=host,
 			port=port,
