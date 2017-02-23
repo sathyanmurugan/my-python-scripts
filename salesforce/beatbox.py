@@ -52,15 +52,13 @@ class Client:
 
 	def __del__(self):
 		if self.__conn is not None:
-			try:
-				self.__conn.close()
-			except Exception:
-				pass
+			self.__conn.close()
+			self.__conn = None
 
 	# login, the serverUrl and sessionId are automatically handled, returns the loginResult structure
 	def login(self, username, password):
 		lr = LoginRequest(self.serverUrl, username, password).post()
-		self.useSession(str(lr[_tPartnerNS.sessionId]), str(lr[_tPartnerNS.serverUrl]))
+		self.useSession(str(lr[0][_tPartnerNS.sessionId]), str(lr[0][_tPartnerNS.serverUrl]))
 		return lr
 
 	# perform a portal login, orgId is always needed, portalId is needed for new style portals
@@ -451,9 +449,9 @@ class SoapEnvelope:
 		result = tramp[_tSoapNS.Body][0]
 		# it contains either a single child, or for a batch call multiple children
 		if alwaysReturnList or len(result) > 1:
-			return result[:]
+			return result[:],rawResponse
 		else:
-			return result[0]
+			return result[0],rawResponse
 
 
 class LoginRequest(SoapEnvelope):

@@ -11,6 +11,8 @@ import salesforce.beatbox as beatbox
 from math import ceil
 from datetime import datetime,timedelta
 import logging
+import pandas as pd
+from bs4 import BeautifulSoup
 
 
 __version__ = "0.2"
@@ -26,7 +28,7 @@ class Salesforce:
 		self.svc = beatbox.Client()
 		beatbox.gzipRequest = False
 		loginResult = self.svc.login(sf_user,sf_pw)
-		self.userId = str(loginResult[self.sf.userInfo][self.sf.userId])
+		self.userId = str(loginResult[0][self.sf.userInfo][self.sf.userId])
 		self.logger = logging.getLogger(__name__ + '.Salesforce')
 
 
@@ -47,12 +49,12 @@ class Salesforce:
 	def query(self,query_string):
 
 
-		qr = self.svc.query(query_string)
+		qr = self.svc.query(query_string)[0]
 		results = qr[self.sf.records:]
 		result_size = str(qr[self.sf.size])
 
 		while str(qr[self.sf.done]) == 'false':
-			qr = self.svc.queryMore(str(qr[self.sf.queryLocator]))
+			qr = self.svc.queryMore(str(qr[self.sf.queryLocator]))[0]
 			results.extend(qr[self.sf.records:])
 
 		#Extract fields from query string
@@ -69,14 +71,16 @@ class Salesforce:
 
 
 	def query_all(self,query_string):
+		'''
+		Also queries deleted records
+		'''
 
-
-		qr = self.svc.queryAll(query_string)
+		qr = self.svc.queryAll(query_string)[0]
 		results = qr[self.sf.records:]
 		result_size = str(qr[self.sf.size])
 
 		while str(qr[self.sf.done]) == 'false':
-			qr = self.svc.queryMore(str(qr[self.sf.queryLocator]))
+			qr = self.svc.queryMore(str(qr[self.sf.queryLocator]))[0]
 			results.extend(qr[self.sf.records:])
 
 		#Extract fields from query string
@@ -90,6 +94,35 @@ class Salesforce:
 			data_list.append(data_dict)
 
 		return data_list
+
+
+	def _get_list_dicts(self,data_to_sf):
+		'''
+		Checks type of input and converts to list of dicts if necessary
+		'''
+
+		if isinstance(data_to_sf, pd.DataFrame):
+			#NaN to None
+			data_to_sf = data_to_sf.where((pd.notnull(data_to_sf)), None)
+			list_dicts = data_to_sf.to_dict('records')
+		
+		elif isinstance(data_to_sf,list) and isinstance(data_to_sf[0],dict):
+			list_dicts = data_to_sf
+
+		elif isinstance(data_to_sf,str):
+			df = pd.read_csv(data_to_sf,encoding='latin1')
+			df = df.where((pd.notnull(df)), None)
+			list_dicts = df.to_dict('records')
+
+		else:
+			raise RuntimeError("""
+				Incorrect input type for this operation. Please pass one of the following 
+				- list of dictionaries
+				- Pandas DataFrame
+				- Path to a CSV file
+				""")
+
+		return list_dicts
 
 
 	def _prep_data(self,list_dicts,batch_size):
@@ -110,149 +143,115 @@ class Salesforce:
 
 		return batches
 
-	def _get_updated(self,field,sobjects,start_time,end_time):
+
+	def _parse_xml_result(self,result,update_ids=None):
 		'''
-		Get list of records updated between start_time and end_time by current user
-		'''
-
-		updated_records = []
-
-		for sobject in sobjects:
-			query_result = self.query("""
-				SELECT {0}
-				FROM {1} 
-				WHERE LastModifiedDate>={2}
-				AND LastModifiedDate<={3} 
-				""".format(
-					field,
-					sobject,
-					start_time,
-					end_time
-					))
-
-			Ids = [dic[field] for dic in query_result]
-			updated_records.extend(Ids)
-
-		return updated_records
-
-
-	def create(self,list_dicts,batch_size=200):
-		'''
-		Returns a dict of created Ids and number of failures
+		Parse XML response using BeautifulSoup  
 		'''
 
-		#sforce Objects being updated
-		sobjects = list(set([dic['type'] for dic in list_dicts]))
+		soup = BeautifulSoup(result,'lxml')
+		results = soup.findAll('result')
+		parsed_results = []
+
+		if update_ids:
+
+			for result,update_id in zip(results,update_ids):
+				result_dict = {}
+
+				for elem in ['success','id','fields','message','statuscode']:
+					if result.find(elem):
+						result_dict[elem] = result.find(elem).get_text()
+					else:
+						result_dict[elem] = None
+
+				if result_dict['id'] is None or result_dict['id'] == '':
+					result_dict['id'] = update_id
+
+				parsed_results.append(result_dict)
+		
+		else:
+			
+			for result in results:
+				result_dict = {}
+
+				for elem in ['success','id','fields','message','statuscode']:
+					if result.find(elem):
+						result_dict[elem] = result.find(elem).get_text()
+					else:
+						result_dict[elem] = None
+
+				parsed_results.append(result_dict)
+
+		return parsed_results
+
+
+	def create(self,data_to_sf,batch_size=200):
+		'''
+		
+		data_to_sf - can be one of the following:
+				- list of dictionaries
+				- a pandas dataframe
+				- path to csv
+
+		Always add a column 'type' = name of the sforce object being acted upon
+		'''
+
+		list_dicts = self._get_list_dicts(data_to_sf)
 
 		batches = self._prep_data(list_dicts,batch_size)
 		counter = 0
+		results = []
 
-		#Salesforce time seems to be 15 seconds slower than UTC
-		start_time = (datetime.utcnow() - timedelta(seconds=20)).strftime('%Y-%m-%dT%H:%M:%SZ')
 		for batch in batches:
 			counter+=1
 			self.logger.info ('Inserting batch %d of %d' % (counter,len(batches)))
-			batch_result = self.svc.create(batch)
+			result = self.svc.create(batch)
+			parsed_result = self._parse_xml_result(result[1])
+			results.extend(parsed_result)
 
-		end_time = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
-
-		records_created = self._get_updated('Id',sobjects,start_time,end_time)
-
-		data_dict = {
-		'success':records_created,
-		'errors': len(list_dicts) - len(records_created)
-		}
-
-		return data_dict		
+		return results		
 
 
-	def update(self,list_dicts,batch_size=200):
+	def update(self,data_to_sf,batch_size=200):
 		'''
-		Returns a dict of updated Ids failed to update Ids
+		data_to_sf - can be one of the following:
+				- list of dictionaries
+				- a pandas dataframe
+				- path to csv
+
+		Always add a column 'type' = name of the sforce object being acted upon
 		'''
 
-		#List of records being updated
-		records_to_update = [dic['Id'] for dic in list_dicts]
-
-		#sforce Objects being updated
-		sobjects = list(set([dic['type'] for dic in list_dicts]))
-
+		list_dicts = self._get_list_dicts(data_to_sf)
 		batches = self._prep_data(list_dicts,batch_size)
 		counter = 0
+		results = []
 
-		#Salesforce time seems to be 15 seconds slower than UTC
-		start_time = (datetime.utcnow() - timedelta(seconds=20)).strftime('%Y-%m-%dT%H:%M:%SZ')
 		for batch in batches:
+			update_ids = [dic['Id'] for dic in batch]
 			counter+=1
 			self.logger.info ('Updating batch %d of %d' % (counter,len(batches)))
-			batch_result = self.svc.update(batch)
+			result = self.svc.update(batch)
+			parsed_result = self._parse_xml_result(result[1],update_ids)
+			results.extend(parsed_result)
 
-		end_time = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
-
-		records_updated = self._get_updated('Id',sobjects,start_time,end_time)
-		records_not_updated = list(set(records_to_update) - set(records_updated))
-
-		data_dict = {
-		'success':records_updated,
-		'errors':records_not_updated
-		}
-
-		return data_dict
+		return results
 
 
-
-	def upsert(self,upsert_field,list_dicts,batch_size=200):
-		'''
-		Dont use Id, use upsert_field as the unique identifier
-		upsert_field must be a sforce custom external field
-		Upserts only one object per call, since function is tied to the upsert field, 
-		unlike the create or update operations
-		'''
-
-		#List of records being upserted
-		records_to_upsert = [dic[upsert_field] for dic in list_dicts]
-
-		#sforce Objects being upserted
-		sobjects = list(set([dic['type'] for dic in list_dicts]))
-
-		batches = self._prep_data(list_dicts,batch_size)
-		counter = 0
-
-		#Salesforce time seems to be 15 seconds slower than UTC
-		start_time = (datetime.utcnow() - timedelta(seconds=20)).strftime('%Y-%m-%dT%H:%M:%SZ')
-		for batch in batches:
-			counter+=1
-			self.logger.info ('Upserting batch %d of %d' % (counter,len(batches)))
-			batch_result = self.svc.upsert(upsert_field,batch)
-
-		end_time = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
-	
-		records_upserted = self._get_updated(upsert_field,sobjects,start_time,end_time)
-		records_not_upserted = list(set(records_to_upsert) - set(records_upserted))
-
-		data_dict = {
-		'success':records_upserted,
-		'errors':records_not_upserted
-		}
-
-		return data_dict	
-
-
-	def delete(self,list_ids,batch_size=200):
+	def delete(self,list_ids):
 		'''
 		Input is a list, not a list of dicts
-		List should contain only the Id of the record being deleted, no type
+		List should contain only the Id of the record being deleted, no type is required
 		'''
 
 		counter = 0
-		result = []
+		results = []
 
 		for record_id in list_ids:
 			counter+=1
 			self.logger.info ('Deleting record %d of %d' % (counter,len(list_ids)))
-			batch_result = self.svc.delete(record_id)
-			result.append(batch_result)
+			result = self.svc.delete(record_id)
+			parsed_result = self._parse_xml_result(result[1])
+			results.append(parsed_result)
 
-		return result
-
-
+		return results
