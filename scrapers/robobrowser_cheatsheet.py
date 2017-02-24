@@ -24,7 +24,7 @@ form = browser.get_form()
 form[_control_1]= _some_value
 form[_control_2]= [_some_values]
 form[__control_3_pageaction]= _some_ajax_value
-browser.submit_form(form)
+browser.submit_form(form,submit=form['export']) #name=export
 
 #Download CSV and store in df
 response = browser.response.content.decode('utf8')
