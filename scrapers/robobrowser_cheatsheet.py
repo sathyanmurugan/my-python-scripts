@@ -17,6 +17,9 @@ login_form['username']= 'user'
 login_form['password']= 'pw'
 browser.submit_form(login_form)
 
+#Soup the page
+soup = browser.parsed
+
 #Go to next URL
 target_url = _target_url
 browser.open(target_url)
