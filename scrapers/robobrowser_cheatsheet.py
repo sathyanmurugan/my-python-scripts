@@ -1,6 +1,8 @@
 # Author: Sathyan Murugan (sathyan.murugan@blacklane.com)
 # Year:   2017
 
+#https://github.com/jmcarp/robobrowser/issues/22
+
 from robobrowser import RoboBrowser
 from io import StringIO
 import pandas as pd
