@@ -13,7 +13,7 @@ from datetime import datetime,timedelta
 import logging
 import pandas as pd
 from bs4 import BeautifulSoup
-
+from tqdm import tqdm
 
 __version__ = "0.2"
 __author__ = "Sathyan Murugan"
@@ -46,40 +46,27 @@ class Salesforce:
 		return fields
 
 
-	def query(self,query_string):
+	def query(self,query_string,query_all=False):
+		'''
+		query_all = True will also query archived and deleted records
 
-
-		qr = self.svc.query(query_string)[0]
+		'''
+		if query_all:
+			qr = self.svc.queryAll(query_string)[0]
+		else:
+			qr = self.svc.query(query_string)[0]
+		
 		results = qr[self.sf.records:]
 		result_size = str(qr[self.sf.size])
 
-		while str(qr[self.sf.done]) == 'false':
-			qr = self.svc.queryMore(str(qr[self.sf.queryLocator]))[0]
-			results.extend(qr[self.sf.records:])
-
-		#Extract fields from query string
-		fields = self._get_fields(query_string)
-
-		data_list = []
-		for result in results:
-			data_dict = {}
-			for val,field in zip(result[2:],fields):
-				data_dict[field] = str(val)
-			data_list.append(data_dict)
-
-		return data_list
-
-
-	def query_all(self,query_string):
-		'''
-		Also queries deleted records
-		'''
-
-		qr = self.svc.queryAll(query_string)[0]
-		results = qr[self.sf.records:]
-		result_size = str(qr[self.sf.size])
+		self.logger.info('{0} results found'.format(result_size))
+		counter = 1
+		batch_count = ceil(int(result_size)/500)
 
 		while str(qr[self.sf.done]) == 'false':
+			counter+=1
+			self.logger.info('Extracting batch {0} of {1}'.format(counter,batch_count))
+
 			qr = self.svc.queryMore(str(qr[self.sf.queryLocator]))[0]
 			results.extend(qr[self.sf.records:])
 
@@ -110,7 +97,7 @@ class Salesforce:
 			list_dicts = data_to_sf
 
 		elif isinstance(data_to_sf,str):
-			df = pd.read_csv(data_to_sf,encoding='latin1')
+			df = pd.read_csv(data_to_sf,encoding='utf8',dtype=object) #read as str
 			df = df.where((pd.notnull(df)), None)
 			list_dicts = df.to_dict('records')
 
@@ -119,26 +106,31 @@ class Salesforce:
 				Incorrect input type for this operation. Please pass one of the following 
 				- list of dictionaries
 				- Pandas DataFrame
-				- Path to a CSV file
+				- path/to/file.csv
 				""")
 
 		return list_dicts
 
 
-	def _prep_data(self,list_dicts,batch_size):
+	def _clean_data(self,list_dicts):
 
 		#Convert data to str if not null
 		for dic in list_dicts:
 			for key in dic:
 				if dic[key] != None:
-					dic[key] = str(dic[key]) 
+					dic[key] = str(dic[key]) 		
+
+		return list_dicts
+
+
+	def _make_batches(self,data,batch_size):
 
 		#Calculate the number of batches to upload
-		num_batches = ceil(len(list_dicts)/batch_size)
+		num_batches = ceil(len(data)/batch_size)
 		
 		#Break the list of dicts into batches 
 		batches = [[] for x in range(num_batches)]
-		for index, item in enumerate(list_dicts):
+		for index, item in enumerate(data):
 			batches[index % num_batches].append(item)
 
 		return batches
@@ -196,13 +188,14 @@ class Salesforce:
 		Always add a column 'type' = name of the sforce object being acted upon
 		'''
 
-		list_dicts = self._get_list_dicts(data_to_sf)
+		list_dicts_raw = self._get_list_dicts(data_to_sf)
+		list_dicts = self._clean_data(list_dicts_raw)
 
-		batches = self._prep_data(list_dicts,batch_size)
+		batches = self._make_batches(list_dicts,batch_size)
 		counter = 0
 		results = []
 
-		for batch in batches:
+		for batch in tqdm(batches):
 			counter+=1
 			self.logger.info ('Inserting batch %d of %d' % (counter,len(batches)))
 			result = self.svc.create(batch)
@@ -222,12 +215,13 @@ class Salesforce:
 		Always add a column 'type' = name of the sforce object being acted upon
 		'''
 
-		list_dicts = self._get_list_dicts(data_to_sf)
-		batches = self._prep_data(list_dicts,batch_size)
+		list_dicts_raw = self._get_list_dicts(data_to_sf)
+		list_dicts = self._clean_data(list_dicts_raw)
+		batches = self._make_batches(list_dicts,batch_size)
 		counter = 0
 		results = []
 
-		for batch in batches:
+		for batch in tqdm(batches):
 			update_ids = [dic['Id'] for dic in batch]
 			counter+=1
 			self.logger.info ('Updating batch %d of %d' % (counter,len(batches)))
@@ -238,20 +232,53 @@ class Salesforce:
 		return results
 
 
-	def delete(self,list_ids):
+	def _get_list(self,data_to_sf):
 		'''
-		Input is a list, not a list of dicts
+		Checks type of input and converts to list if necessary
+		'''
+
+		if isinstance(data_to_sf,list) and isinstance(data_to_sf[0],str):
+			delete_list = data_to_sf
+
+		elif isinstance(data_to_sf, pd.DataFrame) and len(list(data_to_sf.columns)) == 1 and list(data_to_sf.columns)[0].lower()=='id':
+			delete_list = data_to_sf[list(data_to_sf.columns)[0]].tolist()
+
+		elif isinstance(data_to_sf,str):
+			df = pd.read_csv(data_to_sf,encoding='latin1')
+			if len(list(df.columns)) == 1 and list(df.columns)[0].lower()=='id':
+				delete_list = df[list(df.columns)[0]].tolist()
+		else:
+			raise RuntimeError("""
+				Incorrect input type for this operation. Please pass one of the following 
+				- list of Ids to deleted
+				- Pandas DataFrame with just one column (Ids to be deleted)
+				- path/to/file.csv with just one column (Ids to be deleted)
+				""")
+
+		return delete_list
+
+
+	def delete(self,data_to_sf,batch_size=200):
+		'''
+		data_to_sf - can be one of the following:
+				- list
+				- a pandas dataframe
+				- path to csv
+
 		List should contain only the Id of the record being deleted, no type is required
 		'''
+
+		delete_list = self._get_list(data_to_sf)
+		batches = self._make_batches(delete_list,batch_size)
 
 		counter = 0
 		results = []
 
-		for record_id in list_ids:
+		for batch in tqdm(batches):
 			counter+=1
-			self.logger.info ('Deleting record %d of %d' % (counter,len(list_ids)))
-			result = self.svc.delete(record_id)
+			self.logger.info ('Deleting batch %d of %d' % (counter,len(batches)))
+			result = self.svc.delete(batch)
 			parsed_result = self._parse_xml_result(result[1])
-			results.append(parsed_result)
+			results.extend(parsed_result)
 
 		return results
