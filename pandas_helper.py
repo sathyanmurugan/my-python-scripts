@@ -32,3 +32,6 @@ df['nps_score'] = df['nps_score'].astype(int)
 df = pd.melt(df,id_vars=['survey_date'],var_name='type')
 
 df = df.rename(columns={'Id':'OwnerId'})
+
+#NaN to None
+df = df.where((pd.notnull(df)), None)

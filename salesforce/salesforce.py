@@ -10,7 +10,6 @@ which is an older version and is only compatible with Python 2.7 and lower
 import salesforce.beatbox as beatbox
 from math import ceil
 from datetime import datetime,timedelta
-import logging
 import pandas as pd
 from bs4 import BeautifulSoup
 from tqdm import tqdm
@@ -29,7 +28,6 @@ class Salesforce:
 		beatbox.gzipRequest = False
 		loginResult = self.svc.login(sf_user,sf_pw)
 		self.userId = str(loginResult[0][self.sf.userInfo][self.sf.userId])
-		self.logger = logging.getLogger(__name__ + '.Salesforce')
 
 
 	def _get_fields(self,query_string):
@@ -59,13 +57,13 @@ class Salesforce:
 		results = qr[self.sf.records:]
 		result_size = str(qr[self.sf.size])
 
-		self.logger.info('{0} results found'.format(result_size))
+		print('{0} results found'.format(result_size))
 		counter = 1
 		batch_count = ceil(int(result_size)/500)
 
 		while str(qr[self.sf.done]) == 'false':
 			counter+=1
-			self.logger.info('Extracting batch {0} of {1}'.format(counter,batch_count))
+			print('Extracting batch {0} of {1}'.format(counter,batch_count))
 
 			qr = self.svc.queryMore(str(qr[self.sf.queryLocator]))[0]
 			results.extend(qr[self.sf.records:])
@@ -192,12 +190,9 @@ class Salesforce:
 		list_dicts = self._clean_data(list_dicts_raw)
 
 		batches = self._make_batches(list_dicts,batch_size)
-		counter = 0
 		results = []
 
 		for batch in tqdm(batches):
-			counter+=1
-			self.logger.info ('Inserting batch %d of %d' % (counter,len(batches)))
 			result = self.svc.create(batch)
 			parsed_result = self._parse_xml_result(result[1])
 			results.extend(parsed_result)
@@ -218,13 +213,10 @@ class Salesforce:
 		list_dicts_raw = self._get_list_dicts(data_to_sf)
 		list_dicts = self._clean_data(list_dicts_raw)
 		batches = self._make_batches(list_dicts,batch_size)
-		counter = 0
 		results = []
 
 		for batch in tqdm(batches):
 			update_ids = [dic['Id'] for dic in batch]
-			counter+=1
-			self.logger.info ('Updating batch %d of %d' % (counter,len(batches)))
 			result = self.svc.update(batch)
 			parsed_result = self._parse_xml_result(result[1],update_ids)
 			results.extend(parsed_result)
@@ -270,13 +262,9 @@ class Salesforce:
 
 		delete_list = self._get_list(data_to_sf)
 		batches = self._make_batches(delete_list,batch_size)
-
-		counter = 0
 		results = []
 
 		for batch in tqdm(batches):
-			counter+=1
-			self.logger.info ('Deleting batch %d of %d' % (counter,len(batches)))
 			result = self.svc.delete(batch)
 			parsed_result = self._parse_xml_result(result[1])
 			results.extend(parsed_result)
