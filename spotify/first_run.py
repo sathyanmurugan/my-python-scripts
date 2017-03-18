@@ -15,7 +15,7 @@ url ="""
 
 """
 
-code = oa.parse_response_code(url)
-token_info = oa.get_access_token(code)
+code = auth.parse_response_code(url)
+token_info = auth.get_access_token(code)
 
 #Store token info somewhere
