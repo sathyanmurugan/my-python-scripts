@@ -35,7 +35,7 @@ class UserSetup:
 		self.sp = spotipy.Spotify(auth=self.access_token)
 		self.u_id = self.sp.current_user()['id']
 		self.u_name = self.sp.current_user()['display_name']
-		self.playlist_name = self.u_name.split()[0] + "'s Daily Playlist" 
+		self.playlist_name = "My Daily Playlist" 
 
 	def _write_token_to_file(self):
 		file_path = os.path.join(self.path_to_dir,'{0}_token.json'.format(self.u_id))
@@ -67,14 +67,14 @@ class UserSetup:
 
 		user_firstname = self.u_name.split()[0]
 		msg = """
-		Thanks {0}, you are all setup! We have generated a playlist for you called {1}.
+		Awesome, you are all setup! We have generated a playlist for you called {0}.
 		It will be updated every day around 0700 UTC, and will be filled with up to
 		20 songs based on your recent listening preferences.
 
 		To get you started, we went ahead and filled the playlist now.
 
 		Enjoy!
-		""".format(user_firstname,self.playlist_name)
+		""".format(self.playlist_name)
 		return msg,self.u_id,user_data['p_id']
 
 
