@@ -65,7 +65,6 @@ class UserSetup:
 		user_data = self._create_playlist()
 		self._write_user_to_file(user_data)
 
-		user_firstname = self.u_name.split()[0]
 		msg = """
 		Awesome, you are all setup! We have generated a playlist for you called {0}.
 		It will be updated every day around 0700 UTC, and will be filled with up to
