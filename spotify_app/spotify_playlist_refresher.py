@@ -2,7 +2,7 @@ from spotify_helper import TrackFactory
 import os
 import json
 
-data_dir = r'C:\Users\Sathyan\Documents\GitHub\my-python-scripts\spotify_app\json_files'
+data_dir = os.path.join(os.getcwd(),'json_files')
 app_credentials_file = os.path.join(data_dir,'spotify_app_credentials.json')
 user_data_file = os.path.join(data_dir,'all_user_data.json') 
 

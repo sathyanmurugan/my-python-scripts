@@ -4,7 +4,7 @@ import os
 import json
 
 app = Flask(__name__)
-data_dir = r'C:\Users\Sathyan\Documents\GitHub\my-python-scripts\spotify_app\json_files'
+data_dir = os.path.join(os.getcwd(),'json_files')
 
 #Get Credentials from JSON file
 with open(os.path.join(data_dir,'spotify_credentials.json'),'r') as f:
