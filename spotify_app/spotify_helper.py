@@ -94,7 +94,7 @@ class TrackFactory:
 		access_token = token_info['access_token']
 		self.sp = spotipy.Spotify(auth=access_token)
 		self.u_id = self.sp.current_user()['id']
-		self.u_locale = self.sp.current_user()['country']
+		#self.u_locale = self.sp.current_user()['country']
 
 
 	def _get_seed_tracks(self):
@@ -107,7 +107,10 @@ class TrackFactory:
 
 	def _get_recommendations(self,top_5_tracks):
 		
-		recommended_tracks = self.sp.recommendations(seed_tracks=top_5_tracks,country=self.u_locale)
+		recommended_tracks = self.sp.recommendations(
+			seed_tracks=top_5_tracks,
+			#country=self.u_locale
+			)
 		recommended_track_ids = [track['id'] for track in recommended_tracks['tracks']]
 
 		return recommended_track_ids
