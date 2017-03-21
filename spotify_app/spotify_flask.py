@@ -1,5 +1,7 @@
 from flask import Flask,redirect,request,render_template
-from spotify_helper import AuthFlow,UserSetup,TrackFactory
+import spotipy
+import spotipy.oauth2 as oauth2
+from spotify_helper import dump_token
 import os
 import json
 
@@ -19,26 +21,42 @@ s_secret = c['spotify_client_secret']
 s_redir = c['spotify_redirect_uri']
 s_scope = c['spotify_scope']
 
-#Initialize the AuthFlow class to enable user registration
-auth = AuthFlow(s_id,s_secret,s_redir,s_scope)
+#Initialize the Auth class to enable user registration/login
+auth = oauth2.SpotifyOAuth(client_id=s_id,client_secret=s_secret,redirect_uri=s_redir,scope=s_scope)
 
 @app.route('/')
 def hello():
-	
 	return render_template('welcome.html')
 
-
 #Visiting this link redirects user to Spotify to confirm scopes
-@app.route('/signup')
-def signup():
-	auth_url = auth.get_auth_url()
+@app.route('/connect')
+def connect():
+	auth_url = auth.get_authorize_url()
 	return redirect(auth_url)
+
+#Redirect from Spotify
+@app.route('/check_user')
+def check_user():
+
+	code = auth.parse_response_code(request.url)
+	token_data = auth.get_access_token(code)
+	access_token = token_data['access_token']
+
+	sp = spotipy.Spotify(auth=access_token)
+	u_id = sp.current_user()['id']
+
+	all_users = get_all_users(os.path.join(data_dir,'all_user_data.json'))
+	if u_id not in all_users:
+		
+
+	dump_token(data_dir,u_id)
+	return redirect('/main')
 
 
 @app.route('/main')
 def main():
-	token_info = auth.get_token(request.url)
-
+	
+	tf = TrackFactory(s_id,s_secret,s_redir,,s_scope)
 	return render_template('main.html')
 
 
@@ -67,4 +85,4 @@ def user_setup():
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0',port=8080)
+    app.run(host='0.0.0.0',port=8080,debug=True)

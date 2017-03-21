@@ -4,44 +4,26 @@ import json
 import os
 import random
 
-class AuthFlow:
-	def __init__(self,client_id,client_secret,redirect_uri,scope):
 
-		self.auth = oauth2.SpotifyOAuth(
-			client_id=client_id,
-		    client_secret=client_secret,
-		    redirect_uri=redirect_uri,
-		    scope=scope
-		    )
+def dump_token(path_to_dir,u_id):
+	file_path = os.path.join(path_to_dir,'{0}_token.json'.format(u_id))
+	with open(file_path, 'w') as f:
+		json.dump(token_data,f)
 
-	def get_auth_url(self):
+def get_all_users(path_to_file):
+		with open(path_to_file,'r') as f:
+			all_user_data = json.load(f)
+			user_ids = [user['u_id'] for user in all_user_data]
+		return user_ids	
 
-		auth_url = self.auth.get_authorize_url()
-		return auth_url
-
-	def get_token(self,resp_url):
-		
-		code = self.auth.parse_response_code(resp_url)
-		token_data = self.auth.get_access_token(code)
-		return token_data
-
-
+def user_setup(access_token,path_to_dir)
 
 class UserSetup:
 	def __init__(self,token_data,path_to_dir):
 		
 		self.path_to_dir = path_to_dir
-		self.token_data = token_data
-		self.access_token = token_data['access_token']
-		self.sp = spotipy.Spotify(auth=self.access_token)
+		self.sp = spotipy.Spotify(auth=access_token)
 		self.u_id = self.sp.current_user()['id']
-		self.u_name = self.sp.current_user()['display_name']
-		self.playlist_name = "My Daily Playlist" 
-
-	def _write_token_to_file(self):
-		file_path = os.path.join(self.path_to_dir,'{0}_token.json'.format(self.u_id))
-		with open(file_path, 'w') as f:
-			json.dump(self.token_data,f)
 
 	def _create_playlist(self):
 		
@@ -59,23 +41,6 @@ class UserSetup:
 
 		with open(file,'w') as f:
 			json.dump(all_user_data,f)
-
-	def setup(self):
-		
-		self._write_token_to_file()
-		user_data = self._create_playlist()
-		self._write_user_to_file(user_data)
-
-		msg = """
-		Awesome, you are all setup! We have generated a playlist for you called {0}.
-		It will be updated every day around 0700 UTC, and will be filled with up to
-		20 songs based on your recent listening preferences.
-
-		To get you started, we went ahead and filled the playlist now.
-
-		Enjoy!
-		""".format(self.playlist_name)
-		return msg,self.u_id,user_data['p_id']
 
 
 class TrackFactory:
