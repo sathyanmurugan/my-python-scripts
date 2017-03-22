@@ -5,86 +5,57 @@ import os
 import random
 
 
-def dump_token(path_to_dir,u_id):
-	file_path = os.path.join(path_to_dir,'{0}_token.json'.format(u_id))
-	with open(file_path, 'w') as f:
-		json.dump(token_data,f)
 
-def get_all_users(path_to_file):
-		with open(path_to_file,'r') as f:
-			all_user_data = json.load(f)
-			user_ids = [user['u_id'] for user in all_user_data]
-		return user_ids	
+class SongSpotting:
 
-def user_setup(access_token,path_to_dir)
-
-class UserSetup:
-	def __init__(self,token_data,path_to_dir):
-		
-		self.path_to_dir = path_to_dir
+	def __init__(self,access_token):
 		self.sp = spotipy.Spotify(auth=access_token)
-		self.u_id = self.sp.current_user()['id']
-
-	def _create_playlist(self):
-		
-		playlist = self.sp.user_playlist_create(self.u_id,self.playlist_name,public=True)
-		user_data = {'u_id':self.u_id,'p_id':playlist['id']}
-
-		return user_data
-
-	def _write_user_to_file(self,user_data):
-		file = os.path.join(self.path_to_dir,'all_user_data.json')
-
-		with open(file,'r') as f:
-			all_user_data = json.load(f)
-		all_user_data.append(user_data)
-
-		with open(file,'w') as f:
-			json.dump(all_user_data,f)
+		self.playlist_name = "SongSpotting - Daily Playlist"
+		self.u_id = self.sp.current_user()['id'] 
 
 
-class TrackFactory:
-	
-	def __init__(self,client_id,client_secret,redirect_uri,path_to_token,scope):
-
-		self.auth = oauth2.SpotifyOAuth(
-			client_id=client_id,
-		    client_secret=client_secret,
-		    redirect_uri=redirect_uri,
-		    cache_path=path_to_token,
-		    scope=scope
-		    )
-
-		token_info = self.auth.get_cached_token()
-		access_token = token_info['access_token']
-		self.sp = spotipy.Spotify(auth=access_token)
-		self.u_id = self.sp.current_user()['id']
-		#self.u_locale = self.sp.current_user()['country']
-
-
-	def _get_seed_tracks(self):
+	def get_seed_tracks(self):
 
 		top_tracks = self.sp.current_user_top_tracks(limit=50, time_range='short_term')
 		top_track_ids = [track['id'] for track in top_tracks['items']]
 
-		return random.sample(top_track_ids,5)
+		count = 5 if len(top_track_ids) >= 5 else len(top_track_ids)
+		seed = random.sample(top_track_ids,count)
+
+		return seed
 
 
-	def _get_recommendations(self,top_5_tracks):
+	def get_recommendations(self,seed):
 		
-		recommended_tracks = self.sp.recommendations(
-			seed_tracks=top_5_tracks,
-			#country=self.u_locale
-			)
+		recommended_tracks = self.sp.recommendations(seed_tracks=seed,limit=20)
 		recommended_track_ids = [track['id'] for track in recommended_tracks['tracks']]
 
 		return recommended_track_ids
 
-	def add_tracks(self,playlist_id):
 
-		seed = self._get_seed_tracks()
-		recommendations = self._get_recommendations(seed)
-		self.sp.user_playlist_replace_tracks(self.u_id,playlist_id,recommendations)
+	def store_user(self,p_id,file):
+
+		user_data = {'u_id':self.u_id,'p_id':p_id}
+		
+		with open(file,'r') as f:
+			all_user_data = json.load(f)
+			all_user_data.append(user_data)
+
+		with open(file,'w') as f:
+			json.dump(all_user_data,f)
+
+		return
+
+	def setup_user(self,file):
+
+		p_id = self.sp.user_playlist_create(self.u_id,self.playlist_name)['id']
+		self.store_user(p_id,file)
+
+		seed = self.get_seed_tracks()
+		recommendations = self.get_recommendations(seed)
+		self.sp.user_playlist_replace_tracks(self.u_id,p_id,recommendations)
+
+		return p_id
 
 
 	def get_user_playlist_ids(self,limit=50,offset=0):
@@ -100,3 +71,21 @@ class TrackFactory:
 			playlist_ids.extend([pl['id'] for pl in playlists['items']])
 
 		return playlist_ids
+
+
+	def get_all_users(self,file):
+		
+		with open(file,'r') as f:
+			all_user_data = json.load(f)
+			user_ids = [user['u_id'] for user in all_user_data]
+
+		return user_ids	
+
+
+	def store_token(self,path_to_dir,token_data):
+		
+		file = os.path.join(path_to_dir,'{0}_token.json'.format(self.u_id))
+		with open(file, 'w') as f:
+			json.dump(token_data,f)
+
+		return
