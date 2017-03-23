@@ -4,20 +4,10 @@ from spotify_helper import SongSpotting
 import os
 import json
 
-app = Flask(
-	__name__,
-	static_folder='static',
-    template_folder='templates'
-)
+app = Flask(__name__,static_folder='static',template_folder='templates')
 
-data_dir = os.path.join(os.getcwd(),'json_files')
-cred_json = 'spotify_credentials.json'
-all_user_json = 'all_user_data.json'
-
-
-
-#Get Credentials from JSON file
-with open(os.path.join(data_dir,cred_json),'r') as f:
+cred_json = os.path.join(os.getcwd(),'json_files','spotify_credentials.json')
+with open(cred_json,'r') as f:
 	c = json.load(f)
 s_id = c['spotify_client_id']
 s_secret = c['spotify_client_secret']
@@ -25,12 +15,7 @@ s_redir = c['spotify_redirect_uri']
 s_scope = c['spotify_scope']
 
 #Initialize the Auth class to enable user registration/login
-auth = oauth2.SpotifyOAuth(
-	client_id=s_id,
-	client_secret=s_secret,
-	redirect_uri=s_redir,
-	scope=s_scope)
-
+auth = oauth2.SpotifyOAuth(client_id=s_id,client_secret=s_secret,redirect_uri=s_redir,scope=s_scope)
 
 @app.route('/')
 def hello():
@@ -51,13 +36,26 @@ def main():
 	access_token = token_data['access_token']
 
 	ss = SongSpotting(access_token)
-	ss.store_token(data_dir,token_data)
-	all_users = ss.get_all_users(file=os.path.join(data_dir,all_user_json))
+	ss.store_token(token_data)
+	all_users = ss.get_all_users()
 	
 	if ss.u_id not in all_users:
-		ss.setup_user(file=os.path.join(data_dir,all_user_json))
+		p_id = ss.setup_user()
+	
+	else:
+		#Check if SongSpotting playlist exists among user's playlist
+		p_id = ss.get_user_ss_playlist_id()
+		p_ids = ss.get_user_playlist_ids()
 
-	return render_template('main.html')
+		# If not, reinitialize user 
+		if p_id not in p_ids:
+			ss.delete_user()
+			p_id = ss.setup_user()
+			
+	return render_template(
+		'main.html',
+		user_id=ss.u_id,
+		playlist_id=p_id)
 
 
 if __name__ == '__main__':
