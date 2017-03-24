@@ -6,8 +6,8 @@ import json
 
 app = Flask(__name__,static_folder='static',template_folder='templates')
 
-cred_json = os.path.join(os.getcwd(),'json_files','spotify_credentials.json')
-with open(cred_json,'r') as f:
+cred_file = os.path.join(os.getcwd(),'json_files','spotify_credentials.json')
+with open(cred_file,'r') as f:
 	c = json.load(f)
 s_id = c['spotify_client_id']
 s_secret = c['spotify_client_secret']
@@ -15,7 +15,11 @@ s_redir = c['spotify_redirect_uri']
 s_scope = c['spotify_scope']
 
 #Initialize the Auth class to enable user registration/login
-auth = oauth2.SpotifyOAuth(client_id=s_id,client_secret=s_secret,redirect_uri=s_redir,scope=s_scope)
+auth = oauth2.SpotifyOAuth(
+	client_id=s_id,
+	client_secret=s_secret,
+	redirect_uri=s_redir,
+	scope=s_scope)
 
 @app.route('/')
 def hello():

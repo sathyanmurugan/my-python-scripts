@@ -116,3 +116,8 @@ class SongSpotting:
 
 		return
 
+	def refresh_playlist(self,playlist_id):
+
+		seed = self.get_seed_tracks()
+		recommendations = self.get_recommendations(seed)
+		self.sp.user_playlist_replace_tracks(self.u_id,playlist_id,recommendations)
